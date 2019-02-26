@@ -15,3 +15,7 @@ selenium-debug.log
 *.ntvs*
 *.njsproj
 *.sln
+
+nbproject
+vuelayers.sublime-project
+vuelayers.sublime-workspace

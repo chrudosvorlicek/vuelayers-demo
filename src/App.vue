@@ -238,12 +238,18 @@
 
 <script>
   import { kebabCase, range, random, camelCase } from 'lodash'
-  import { createProj, addProj, findPointOnSurface, createStyle, createMultiPointGeom, loadingBBox } from 'vuelayers/lib/ol-ext'
+  import { createProj, addProj, getProj, findPointOnSurface, createStyle, createMultiPointGeom, loadingBBox } from 'vuelayers/lib/ol-ext'
   import pacmanFeaturesCollection from './assets/pacman.geojson'
   import ScaleLine from 'ol/control/ScaleLine'
   import FullScreen from 'ol/control/FullScreen'
   import OverviewMap from 'ol/control/OverviewMap'
   import ZoomSlider from 'ol/control/ZoomSlider'
+  import { register } from 'ol/proj/proj4.js'
+  import proj4 from 'proj4/dist/proj4-src.js'
+
+  proj4.defs('EPSG:5514', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=589,76,480,0,0,0,0 +units=m +no_defs')
+  register(proj4)
+  addProj(getProj('EPSG:5514'))
 
   // Custom projection for static Image layer
   let x = 1024 * 10000
@@ -484,6 +490,44 @@
         ],
         // layers config
         layers: [
+        // IZS ČR
+          {
+            id: 'wmts-izscr-basemap',
+            title: 'WMTS - IZS ČR base map',
+            cmp: 'vl-layer-tile',
+            visible: false,
+            source: {
+              cmp: 'vl-source-wmts',
+              url: 'http://datsklad.izscr.cz/mapservices/rest/services/BaseMaps/GINA_CR_WGS_extend1/MapServer/tile/{TileMatrix}/{TileRow}/{TileCol}',
+              layerName: 'BaseMaps_GINA_CR_WGS_extend1',
+              origin: [-2.00377E7, 3.02411E7],
+              resolutions: [338.6673440013547, 169.33367200067735, 84.66683600033868, 42.33341800016934, 21.16670900008467, 10.583354500042335, 5.291677250021167, 2.6458386250105836, 1.3229193125052918, 0.6614596562526459],
+              matrixSet: 'default028mm',
+              projection: 'EPSG:3857',
+              format: 'image/jpeg',
+              styleName: 'default',
+              requestEncoding: 'REST',
+            },
+          },
+          {
+            id: 'wmts-izscr-ortofoto',
+            title: 'Ortofoto - IZS ČR',
+            cmp: 'vl-layer-tile',
+            visible: false,
+            source: {
+              cmp: 'vl-source-wmts',
+              url: 'http://datsklad.izscr.cz/mapservices/rest/services/Orto_Ioo/MapServer/tile/{TileMatrix}/{TileRow}/{TileCol}',
+              layerName: 'Orto_Ioo',
+              extent: [-910381.5218461752, -1235926.770970177, -421959.7116692215, -932396.1639089659],
+              origin: [-3.36998E7, 3.36998E7],
+              resolutions: [529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167, 26.458386250105836, 13.229193125052918, 5.291677250021167, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167, 0.26458386250105836],
+              matrixSet: 'default028mm',
+              projection: 'EPSG:5514',
+              format: 'image/jpeg',
+              styleName: 'default',
+              requestEncoding: 'REST',
+            },
+          },
           // Packman vector layer with static vector features
           // rendered through vl-feature component.
           {
