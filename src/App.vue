@@ -490,7 +490,28 @@
         ],
         // layers config
         layers: [
-        // IZS ČR
+        // IZS terinos
+          {
+            id: 'wmts-izscr-terinos',
+            title: 'Terinos IZS ČR',
+            cmp: 'vl-layer-tile',
+            visible: false,
+            source: {
+              cmp: 'vl-source-wmts',
+              url: 'http://gis.izscr.cz/arcgis/rest/services/base_maps/vektor_cr/MapServer/tile/{TileMatrix}/{TileRow}/{TileCol}?blankTile=false',
+              layerName: 'base_maps_vektor_cr',
+              extent: [-904584.8601000011, -1227295.8301, -431724.3000999987, -935236.5901000015],
+              origin: [-3.36998E7, 3.36998E7],
+              resolutions: [529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167, 26.458386250105836, 13.229193125052918, 5.291677250021167, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167, 0.26458386250105836],
+              matrixSet: 'default028mm',
+              tileSize: 512,
+              projection: 'EPSG:5514',
+              format: 'image/jpeg',
+              styleName: 'default',
+              requestEncoding: 'REST',
+            },
+          },
+          // IZS ČR
           {
             id: 'wmts-izscr-basemap',
             title: 'WMTS - IZS ČR base map',
