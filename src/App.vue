@@ -490,7 +490,23 @@
         ],
         // layers config
         layers: [
-        // IZS terinos
+          // mapy.cz
+          {
+            id: 'wmts-mapy-cz',
+            title: 'mapy.cz',
+            cmp: 'vl-layer-tile',
+            visible: false,
+            source: {
+              cmp: 'vl-source-wmts',
+              url: 'https://mapserver.mapy.cz/base-m/12-2212-1389/{TileMatrix}-{TileCol}-{TileRow}',
+              layerName: 'base-m',
+              matrixSet: 'EPSG:3857',
+              format: 'image/jpeg',
+              styleName: 'default',
+              requestEncoding: 'REST',
+            },
+          },
+          // IZS terinos
           {
             id: 'wmts-izscr-terinos',
             title: 'Terinos IZS ČR',
