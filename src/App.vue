@@ -246,6 +246,7 @@
   import ZoomSlider from 'ol/control/ZoomSlider'
   import { register } from 'ol/proj/proj4.js'
   import proj4 from 'proj4/dist/proj4-src.js'
+  import { transformExtent } from 'ol/proj'
 
   proj4.defs('EPSG:5514', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=589,76,480,0,0,0,0 +units=m +no_defs')
   register(proj4)
@@ -505,6 +506,51 @@
               styleName: 'default',
               requestEncoding: 'REST',
             },
+          },
+          // ŘSD - dopravní situace
+          {
+            id: 'rsd-doprava',
+            title: 'Doprava - ŘSD ČR',
+            cmp: 'vl-layer-vector',
+            visible: false,
+            renderMode: 'image',
+            'z-index': 100,
+            source: {
+              projection: 'EPSG:5514',
+              cmp: 'vl-source-vector',
+              features: [],
+              url (extent, resolution, projection) {
+                let inchesPerMeter = 39.37
+                let dotsPerInches = 72
+                let date = new Date()
+                let fullDate = date.getFullYear() + '-' + (('00' + (date.getMonth() + 1)).slice(-2)) + '-' + date.getDate()
+                let randInt = Math.floor(Math.random() * (9999 + 1)) + 90000
+                let jtskExtent = extent
+                transformExtent(jtskExtent, 'EPSG:4326', 'EPSG:5514')
+                let scale = resolution * dotsPerInches * inchesPerMeter
+                scale = Math.round(scale)
+                let url = 'http://localhost/proxy/index.php?url=http://www.dopravniinfo.cz/MapServices/DynamicLayers.ashx/GetFeatures?data={"resolution":' + resolution + ',"extent":{"xmin":' + jtskExtent[0] + ',"xmax":' + jtskExtent[2] + ',"ymin":' + jtskExtent[1] + ',"ymax":' + jtskExtent[3] + '},"layers":["TI","TIU","Kamery","Mereni","ZPI","Meteo","PocasiOblast","SjizdnostKomunikace","TL"],"layerDefs":{"TI":"(([MinZoom] is null) or ([MinZoom]>=' + scale + ')) and ([PlatnostOd] <= \'' + fullDate + ' 23:59:59\' AND [PlatnostDo] >= \'' + fullDate + ' 0:00\')","TIU":"(([MinZoom] is null) or ([MinZoom]>=' + scale + ')) and ([PlatnostOd] <= \'' + fullDate + ' 23:59:59\' AND [PlatnostDo] >= \'' + fullDate + ' 0:00\')","TL": "(([MinZoom] is null) or ([MinZoom]>=' + scale + '))"}}'
+                return url + '&callback=map_jsonp_callback_' + randInt
+              },
+              strategyFactory () {
+                return loadingBBox
+              },
+            },
+            style: [{
+              cmp: 'vl-style-box',
+              styles: {
+                'vl-style-circle': {
+                  radius: 10,
+                  fill: {
+                    color: 'rgba(255,0,0,0.8)',
+                  },
+                  stroke: {
+                    color: '#FFFFFF',
+                    width: 3,
+                  },
+                },
+              },
+            }],
           },
           // IZS terinos
           {
