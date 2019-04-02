@@ -549,6 +549,10 @@
                     width: 3,
                   },
                 },
+                'vl-style-stroke': {
+                  width: 3,
+                  color: '#000000',
+                },
               },
             }],
           },
