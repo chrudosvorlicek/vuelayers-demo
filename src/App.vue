@@ -248,9 +248,20 @@
   import proj4 from 'proj4/dist/proj4-src.js'
   import { transformExtent } from 'ol/proj'
 
-  proj4.defs('EPSG:5514', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=589,76,480,0,0,0,0 +units=m +no_defs')
+  // EPSG:5514, transformace EPSG:1623 - ČR, přesnost 1m (odpovídá definici EPSG:102067, kterou používáš) towgs84 udává transformaci z S-JTSK do ETRS89 (European Terrestrial Reference System 1989)
+  proj4.defs('EPSG:5514,EPSG:1623', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=570.8,85.7,462.8,4.998,1.587,5.261,3.56 +units=m +no_defs')
+  // EPSG:5514, transformace EPSG:5239 - ČR, přesnost 1m towgs84 udává transformaci z S-JTSK/05 do WGS 84
+  proj4.defs('EPSG:5514,EPSG:5239', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=572.213,85.334,461.94,-4.9732,-1.529,-5.2484,3.5378 +units=m +no_defs')
+  // EPSG:5514, transformace EPSG:15965 - ČR a SR, přesnost 6m
+  proj4.defs('EPSG:5514,EPSG:15965', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=589,76,480,0,0,0,0 +units=m +no_defs')
+  // EPSG:5514, transformace EPSG:4836 - SR, přesnost 1m (dodávám pro úplnost) towgs84 udává transformaci z S-JTSK do ETRS89
+  proj4.defs('EPSG:5514,EPSG:4836', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=485,169.5,483.8,7.786,4.398,4.103,0 +units=m +no_defs')
+  
   register(proj4)
-  addProj(getProj('EPSG:5514'))
+  addProj(getProj('EPSG:5514,EPSG:1623'))
+  addProj(getProj('EPSG:5514,EPSG:5239'))
+  addProj(getProj('EPSG:5514,EPSG:15965'))
+  addProj(getProj('EPSG:5514,EPSG:4836'))
 
   // Custom projection for static Image layer
   let x = 1024 * 10000
@@ -424,8 +435,8 @@
     methods,
     data () {
       return {
-        center: [0, 0],
-        zoom: 2,
+        center: [ 14.828796386718748, 49.71027258210569 ],
+        zoom: 9,
         rotation: 0,
         clickCoordinate: undefined,
         selectedFeatures: [],
@@ -469,7 +480,7 @@
           {
             name: 'osm',
             title: 'OpenStreetMap',
-            visible: true,
+            visible: false,
           },
           {
             name: 'sputnik',
@@ -491,15 +502,32 @@
         ],
         // layers config
         layers: [
+          {
+            id: 'wms-pointx',
+            title: 'IZS',
+            cmp: 'vl-layer-tile',
+            visible: true,
+            zIndex: 1,
+            source: {
+              cmp: 'vl-source-wms',
+              url: 'https://api.panel.tereza.giss.cz/mapproxy.php?url=http://datsklad.izscr.cz/mapservices/services/tabl/MAPA_POINTX_6_5_2016_wms/MapServer/WmsServer',
+              layers: '0',
+              styles: 'default',
+              projection: 'EPSG:5514,EPSG:5239',
+              format: 'image/jpeg',
+              crossOrigin: 'anonymous',
+            },
+          },
           // mapy.cz
           {
             id: 'wmts-mapy-cz',
             title: 'mapy.cz',
             cmp: 'vl-layer-tile',
-            visible: false,
+            visible: true,
             source: {
               cmp: 'vl-source-wmts',
-              url: 'https://mapserver.mapy.cz/base-m/12-2212-1389/{TileMatrix}-{TileCol}-{TileRow}',
+              url: 'https://mapserver.mapy.cz/base-m/{TileMatrix}-{TileCol}-{TileRow}',
+              attribution: '© Seznam.cz, a.s., © AOPK ČR – ochrana přírody a krajiny, © Slovenská agentúra živ. prostredia“ - digitální model terénu SR, © Národné lesnické centrum SR“ - lesní a polní cesty SR, © OpenStreetMap Contributors (jen mimo ČR a SR)', // nefunguje - potřeba zjistit proč
               layerName: 'base-m',
               matrixSet: 'EPSG:3857',
               format: 'image/jpeg',
@@ -516,7 +544,7 @@
             renderMode: 'image',
             'z-index': 100,
             source: {
-              projection: 'EPSG:5514',
+              projection: 'EPSG:5514,EPSG:15965',
               cmp: 'vl-source-vector',
               features: [],
               url (extent, resolution, projection) {
@@ -526,10 +554,10 @@
                 let fullDate = date.getFullYear() + '-' + (('00' + (date.getMonth() + 1)).slice(-2)) + '-' + date.getDate()
                 let randInt = Math.floor(Math.random() * (9999 + 1)) + 90000
                 let jtskExtent = extent
-                transformExtent(jtskExtent, 'EPSG:4326', 'EPSG:5514')
+                transformExtent(jtskExtent, 'EPSG:4326', 'EPSG:5514,EPSG:15965')
                 let scale = resolution * dotsPerInches * inchesPerMeter
                 scale = Math.round(scale)
-                let url = 'http://localhost/proxy/index.php?url=http://www.dopravniinfo.cz/MapServices/DynamicLayers.ashx/GetFeatures?data={"resolution":' + resolution + ',"extent":{"xmin":' + jtskExtent[0] + ',"xmax":' + jtskExtent[2] + ',"ymin":' + jtskExtent[1] + ',"ymax":' + jtskExtent[3] + '},"layers":["TI","TIU","Kamery","Mereni","ZPI","Meteo","PocasiOblast","SjizdnostKomunikace","TL"],"layerDefs":{"TI":"(([MinZoom] is null) or ([MinZoom]>=' + scale + ')) and ([PlatnostOd] <= \'' + fullDate + ' 23:59:59\' AND [PlatnostDo] >= \'' + fullDate + ' 0:00\')","TIU":"(([MinZoom] is null) or ([MinZoom]>=' + scale + ')) and ([PlatnostOd] <= \'' + fullDate + ' 23:59:59\' AND [PlatnostDo] >= \'' + fullDate + ' 0:00\')","TL": "(([MinZoom] is null) or ([MinZoom]>=' + scale + '))"}}'
+                let url = 'http://localhost/dopravniinfo-proxy/index.php?url=http://www.dopravniinfo.cz/MapServices/DynamicLayers.ashx/GetFeatures?data={"resolution":' + resolution + ',"extent":{"xmin":' + jtskExtent[0] + ',"xmax":' + jtskExtent[2] + ',"ymin":' + jtskExtent[1] + ',"ymax":' + jtskExtent[3] + '},"layers":["TI","TIU","Kamery","Mereni","ZPI","Meteo","PocasiOblast","SjizdnostKomunikace","TL"],"layerDefs":{"TI":"(([MinZoom] is null) or ([MinZoom]>=' + scale + ')) and ([PlatnostOd] <= \'' + fullDate + ' 23:59:59\' AND [PlatnostDo] >= \'' + fullDate + ' 0:00\')","TIU":"(([MinZoom] is null) or ([MinZoom]>=' + scale + ')) and ([PlatnostOd] <= \'' + fullDate + ' 23:59:59\' AND [PlatnostDo] >= \'' + fullDate + ' 0:00\')","TL": "(([MinZoom] is null) or ([MinZoom]>=' + scale + '))"}}'
                 return url + '&callback=map_jsonp_callback_' + randInt
               },
               strategyFactory () {
@@ -571,7 +599,7 @@
               resolutions: [529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167, 26.458386250105836, 13.229193125052918, 5.291677250021167, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167, 0.26458386250105836],
               matrixSet: 'default028mm',
               tileSize: 512,
-              projection: 'EPSG:5514',
+              projection: 'EPSG:5514,EPSG:5239',
               format: 'image/jpeg',
               styleName: 'default',
               requestEncoding: 'REST',
@@ -609,10 +637,28 @@
               origin: [-3.36998E7, 3.36998E7],
               resolutions: [529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167, 26.458386250105836, 13.229193125052918, 5.291677250021167, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167, 0.26458386250105836],
               matrixSet: 'default028mm',
-              projection: 'EPSG:5514',
+              projection: 'EPSG:5514,EPSG:15965',
               format: 'image/jpeg',
               styleName: 'default',
               requestEncoding: 'REST',
+            },
+          },
+          {
+            id: 'wfs-doprava',
+            title: 'Doprava - IZS ČR',
+            cmp: 'vl-layer-vector',
+            visible: false,
+            renderMode: 'image',
+            source: {
+              cmp: 'vl-source-vector',
+              url (extent, resolution, projection) {
+                var jtskExtent = transformExtent(extent, 'EPSG:4326', 'EPSG:5514') // tady je potřeba vědět, v jakém systému to vrací
+                // alert('EPSG:4326: ' + extent.join(',') + '\n' + 'EPSG:5514,EPSG:15965 ' + jtskExtent.join(','))
+                return 'http://datsklad.izscr.cz/mapservices/rest/services/live_sluzby/JSDI/MapServer/export?dpi=96&transparent=true&format=png&bbox=' + jtskExtent.join(',') + '&bboxSR=5514&imageSR=5514&size=1908,869&f=image'
+              },
+              strategyFactory () {
+                return loadingBBox
+              },
             },
           },
           // Packman vector layer with static vector features
