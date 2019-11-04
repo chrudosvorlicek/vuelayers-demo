@@ -1,0 +1,126 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860688.55169678, -1012073.5290527]
+      },
+      "properties": {
+        "id": "18_591",
+        "label": "Point 591"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860296.86131943, -1012212.1661996]
+      },
+      "properties": {
+        "id": "18_2912",
+        "label": "Point 2912"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860304.05639648, -1012189.0009766]
+      },
+      "properties": {
+        "id": "18_2",
+        "label": "Point 2"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860253.0626298, -1012186.8762408]
+      },
+      "properties": {
+        "id": "18_5",
+        "label": "Point 5"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860245.43669902, -1012204.0033313]
+      },
+      "properties": {
+        "id": "18_6",
+        "label": "Point 6"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860216.0581132, -1012189.0830511]
+      },
+      "properties": {
+        "id": "18_7",
+        "label": "Point 7"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860193.22653127, -1012235.8258479]
+      },
+      "properties": {
+        "id": "18_8",
+        "label": "Point 8"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860640.40611196, -1011898.9097255]
+      },
+      "properties": {
+        "id": "18_9",
+        "label": "Point 9"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860642.7262388, -1011978.3268778]
+      },
+      "properties": {
+        "id": "18_3",
+        "label": "Point 3"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860144.82519317, -1012258.0150351]
+      },
+      "properties": {
+        "id": "18_10",
+        "label": "Point 10"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-860123.1975534, -1012268.3913016]
+      },
+      "properties": {
+        "id": "18_11",
+        "label": "Point 11"
+      }
+    }
+  ]
+}

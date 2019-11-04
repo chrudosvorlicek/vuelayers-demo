@@ -1,4 +1,4 @@
-<template xmlns:>
+<template>
   <div id="app" :class="[$options.name]">
     <!-- app map -->
     <vl-map v-if="mapVisible" class="map" ref="map" :load-tiles-while-animating="true" :load-tiles-while-interacting="true"
@@ -8,7 +8,7 @@
       <vl-view ref="view" :center.sync="center" :zoom.sync="zoom" :rotation.sync="rotation"></vl-view>
 
       <!-- interactions -->
-      <vl-interaction-select :features.sync="selectedFeatures" v-if="drawType == null">
+      <vl-interaction-select :features.sync="selectedFeatures">
         <template slot-scope="select">
           <!-- select styles -->
           <vl-style-box>
@@ -28,6 +28,7 @@
           <!--// select styles -->
 
           <!-- selected feature popup -->
+          <!--
           <vl-overlay class="feature-popup" v-for="feature in select.features" :key="feature.id" :id="feature.id"
                       :position="pointOnSurface(feature.geometry)" :auto-pan="true" :auto-pan-animation="{ duration: 300 }">
             <template slot-scope="popup">
@@ -57,53 +58,16 @@
               </section>
             </template>
           </vl-overlay>
+          -->
           <!--// selected popup -->
         </template>
       </vl-interaction-select>
+      <vl-interaction-translate
+          :features="selectedFeatures"
+          @translatestart="beginCoord"
+          @translateend="endCoord"
+      ></vl-interaction-translate>
       <!--// interactions -->
-
-      <!-- geolocation -->
-      <vl-geoloc @update:position="onUpdatePosition">
-        <template slot-scope="geoloc">
-          <vl-feature v-if="geoloc.position" id="position-feature">
-            <vl-geom-point :coordinates="geoloc.position"></vl-geom-point>
-            <vl-style-box>
-              <vl-style-icon src="./assets/marker.png" :scale="0.4" :anchor="[0.5, 1]"></vl-style-icon>
-            </vl-style-box>
-          </vl-feature>
-        </template>
-      </vl-geoloc>
-      <!--// geolocation -->
-
-      <!-- overlay marker with animation -->
-      <vl-feature id="marker" ref="marker" :properties="{ start: Date.now(), duration: 2500 }">
-        <template slot-scope="feature">
-          <vl-geom-point :coordinates="[-10, -10]"></vl-geom-point>
-          <vl-style-box>
-            <vl-style-icon src="./assets/flag.png" :scale="0.5" :anchor="[0.1, 0.95]" :size="[128, 128]"></vl-style-icon>
-          </vl-style-box>
-          <!-- overlay binded to feature -->
-          <vl-overlay v-if="feature.geometry" :position="pointOnSurface(feature.geometry)" :offset="[10, 10]">
-            <p class="is-light box content">
-              Always opened overlay for Feature ID <strong>{{ feature.id }}</strong>
-            </p>
-          </vl-overlay>
-        </template>
-      </vl-feature>
-      <!--// overlay marker -->
-
-
-      <!-- circle geom -->
-      <vl-feature id="circle">
-        <vl-geom-circle :radius="1000000" :coordinates="[0, 30]"></vl-geom-circle>
-      </vl-feature>
-      <!--// circle geom -->
-
-      <!-- base layers -->
-      <vl-layer-tile v-for="layer in baseLayers" :key="layer.name" :id="layer.name" :visible="layer.visible">
-        <component :is="'vl-source-' + layer.name" v-bind="layer"></component>
-      </vl-layer-tile>
-      <!--// base layers -->
 
       <!-- other layers from config -->
       <component v-for="layer in layers" :is="layer.cmp" v-if="layer.visible" :key="layer.id" v-bind="layer">
@@ -141,16 +105,6 @@
         <!--// style -->
       </component>
       <!--// other layers -->
-
-      <!-- draw components -->
-      <vl-layer-vector id="draw-pane" v-if="mapPanel.tab === 'draw'">
-        <vl-source-vector ident="draw-target" :features.sync="drawnFeatures"></vl-source-vector>
-      </vl-layer-vector>
-
-      <vl-interaction-draw v-if="mapPanel.tab === 'draw' && drawType" source="draw-target" :type="drawType"></vl-interaction-draw>
-      <vl-interaction-modify v-if="mapPanel.tab === 'draw'" source="draw-target"></vl-interaction-modify>
-      <vl-interaction-snap v-if="mapPanel.tab === 'draw'" source="draw-target" :priority="10"></vl-interaction-snap>
-      <!--// draw components -->
     </vl-map>
     <!--// app map -->
 
@@ -170,7 +124,6 @@
         <p class="panel-tabs">
           <a @click="showMapPanelTab('state')" :class="mapPanelTabClasses('state')">State</a>
           <a @click="showMapPanelTab('layers')" :class="mapPanelTabClasses('layers')">Layers</a>
-          <a @click="showMapPanelTab('draw')" :class="mapPanelTabClasses('draw')">Draw</a>
         </p>
 
         <div class="panel-block" v-show="mapPanel.tab === 'state'">
@@ -184,14 +137,6 @@
               <td>{{ zoom }}</td>
             </tr>
             <tr>
-              <th>Map rotation</th>
-              <td>{{ rotation }}</td>
-            </tr>
-            <tr>
-              <th>Device coordinate</th>
-              <td>{{ deviceCoordinate }}</td>
-            </tr>
-            <tr>
               <th>Selected features</th>
               <td>{{ selectedFeatures.map(f => f.id) }}</td>
             </tr>
@@ -201,52 +146,26 @@
         <div class="panel-block" v-for="layer in layers" :key="layer.id" @click="showMapPanelLayer"
              :class="{ 'is-active': layer.visible }"
              v-show="mapPanel.tab === 'layers'">
-          <b-switch :key="layer.id" v-model="layer.visible">
+             <b-switch :key="layer.id" v-model="layer.visible">
             {{ layer.title }}
           </b-switch>
-        </div>
-
-        <div class="panel-block draw-panel" v-show="mapPanel.tab === 'draw'">
-          <div class="buttons">
-            <button v-for="control in drawControls" :key="control.type || -1" @click="drawType = control.type"
-                    :class="drawType && drawType === control.type ? 'is-info' : ''" class="button" >
-              <b-icon :icon="control.icon"></b-icon>
-              <span>{{ control.label }}</span>
-            </button>
-          </div>
         </div>
       </b-collapse>
     </div>
     <!--// map panel, controls -->
-
-    <!-- base layers switch -->
-    <div class="base-layers-panel">
-      <div class="buttons has-addons">
-        <button class="button is-light" v-for="layer in baseLayers"
-                :key="layer.name" :class="{ 'is-info': layer.visible }"
-                @click="showBaseLayer(layer.name)">
-          {{ layer.title }}
-        </button>
-        <button class="button is-light" @click="mapVisible = !mapVisible">
-          {{ mapVisible ? 'Hide map' : 'Show map' }}
-        </button>
-      </div>
-    </div>
-    <!--// base layers -->
   </div>
 </template>
 
 <script>
-  import { kebabCase, range, random, camelCase } from 'lodash'
-  import { createProj, addProj, getProj, findPointOnSurface, createStyle, createMultiPointGeom, loadingBBox } from 'vuelayers/lib/ol-ext'
-  import pacmanFeaturesCollection from './assets/pacman.geojson'
+  import { kebabCase, camelCase } from 'lodash'
+  import { addProj, getProj, findPointOnSurface, createStyle } from 'vuelayers/lib/ol-ext'
   import ScaleLine from 'ol/control/ScaleLine'
   import FullScreen from 'ol/control/FullScreen'
-  import OverviewMap from 'ol/control/OverviewMap'
   import ZoomSlider from 'ol/control/ZoomSlider'
   import { register } from 'ol/proj/proj4.js'
   import proj4 from 'proj4/dist/proj4-src.js'
-  import { transformExtent } from 'ol/proj'
+  import pointsJson from './assets/point.geojson'
+  import polygonsJson from './assets/polygon.geojson'
 
   // EPSG:5514, transformace EPSG:1623 - ČR, přesnost 1m (odpovídá definici EPSG:102067, kterou používáš) towgs84 udává transformaci z S-JTSK do ETRS89 (European Terrestrial Reference System 1989)
   proj4.defs('EPSG:5514,EPSG:1623', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=570.8,85.7,462.8,4.998,1.587,5.261,3.56 +units=m +no_defs')
@@ -256,25 +175,12 @@
   proj4.defs('EPSG:5514,EPSG:15965', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=589,76,480,0,0,0,0 +units=m +no_defs')
   // EPSG:5514, transformace EPSG:4836 - SR, přesnost 1m (dodávám pro úplnost) towgs84 udává transformaci z S-JTSK do ETRS89
   proj4.defs('EPSG:5514,EPSG:4836', '+proj=krovak +lat_0=49.5 +lon_0=24.83333333333333 +alpha=30.28813972222222 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=485,169.5,483.8,7.786,4.398,4.103,0 +units=m +no_defs')
-  
+
   register(proj4)
   addProj(getProj('EPSG:5514,EPSG:1623'))
   addProj(getProj('EPSG:5514,EPSG:5239'))
   addProj(getProj('EPSG:5514,EPSG:15965'))
   addProj(getProj('EPSG:5514,EPSG:4836'))
-
-  // Custom projection for static Image layer
-  let x = 1024 * 10000
-  let y = 968 * 10000
-  let imageExtent = [-x / 2, -y / 2, x / 2, y / 2]
-  let customProj = createProj({
-    code: 'xkcd-image',
-    units: 'pixels',
-    extent: imageExtent,
-  })
-  // add to the list of known projections
-  // after that it can be used by code
-  addProj(customProj)
 
   const easeInOut = t => 1 - Math.pow(1 - t, 3)
 
@@ -284,79 +190,8 @@
     geometryTypeToCmpName (type) {
       return 'vl-geom-' + kebabCase(type)
     },
-    /**
-     * Packman layer Style function factory
-     * @return {ol.StyleFunction}
-     */
-    pacmanStyleFunc () {
-      const pacman = [
-        createStyle({
-          strokeColor: '#de9147',
-          strokeWidth: 3,
-          fillColor: [222, 189, 36, 0.8],
-        }),
-      ]
-      const path = [
-        createStyle({
-          strokeColor: 'blue',
-          strokeWidth: 1,
-        }),
-        createStyle({
-          imageRadius: 5,
-          imageFillColor: 'orange',
-          geom (feature) {
-            // geometry is an LineString, convert it to MultiPoint to style vertex
-            return createMultiPointGeom(feature.getGeometry().getCoordinates())
-          },
-        }),
-      ]
-      const eye = [
-        createStyle({
-          imageRadius: 6,
-          imageFillColor: '#444444',
-        }),
-      ]
-
-      return function __pacmanStyleFunc (feature) {
-        switch (feature.getId()) {
-          case 'pacman':
-            return pacman
-          case 'pacman-path':
-            return path
-          case 'pacman-eye':
-            return eye
-        }
-      }
-    },
-    /**
-     * Cluster layer style function factory
-     * @return {ol.StyleFunction}
-     */
-    clusterStyleFunc () {
-      const cache = {}
-
-      return function __clusterStyleFunc (feature) {
-        const size = feature.get('features').length
-        let style = cache[size]
-
-        if (!style) {
-          style = createStyle({
-            imageRadius: 10,
-            strokeColor: '#fff',
-            fillColor: '#3399cc',
-            text: size.toString(),
-            textFillColor: '#fff',
-          })
-          cache[size] = style
-        }
-        return [style]
-      }
-    },
     selectFilter (feature) {
       return ['position-feature'].indexOf(feature.getId()) === -1
-    },
-    onUpdatePosition (coordinate) {
-      this.deviceCoordinate = coordinate
     },
     onMapPostCompose ({ vectorContext, frameState }) {
       if (!this.$refs.marker || !this.$refs.marker.$feature) return
@@ -394,25 +229,10 @@
       this.$refs.map.$map.getControls().extend([
         new ScaleLine(),
         new FullScreen(),
-        new OverviewMap({
-          collapsed: false,
-          collapsible: true,
-        }),
         new ZoomSlider(),
       ])
     },
     // base layers
-    showBaseLayer (name) {
-      let layer = this.baseLayers.find(layer => layer.visible)
-      if (layer != null) {
-        layer.visible = false
-      }
-
-      layer = this.baseLayers.find(layer => layer.name === name)
-      if (layer != null) {
-        layer.visible = true
-      }
-    },
     // map panel
     mapPanelTabClasses (tab) {
       return {
@@ -428,6 +248,12 @@
         this.drawType = undefined
       }
     },
+    beginCoord (event) {
+      console.log(event.coordinate)
+    },
+    endCoord (event) {
+      console.log(event.coordinate)
+    },
   }
 
   export default {
@@ -435,87 +261,28 @@
     methods,
     data () {
       return {
-        center: [ 14.828796386718748, 49.71027258210569 ],
-        zoom: 9,
+        center: [ 12.73980021710448, 50.205437881007214 ],
+        // center: [ 14.828796386718748, 49.71027258210569 ],
+        zoom: 15,
+        // zoom: 9,
         rotation: 0,
         clickCoordinate: undefined,
         selectedFeatures: [],
         deviceCoordinate: undefined,
         mapPanel: {
-          tab: 'state',
+          tab: 'layers',
         },
         panelOpen: true,
         mapVisible: true,
-        drawControls: [
-          {
-            type: 'point',
-            label: 'Draw Point',
-            icon: 'map-marker',
-          },
-          {
-            type: 'line-string',
-            label: 'Draw LineString',
-            icon: 'minus',
-          },
-          {
-            type: 'polygon',
-            label: 'Draw Polygon',
-            icon: 'square-o',
-          },
-          {
-            type: 'circle',
-            label: 'Draw Circle',
-            icon: 'circle-thin',
-          },
-          {
-            type: undefined,
-            label: 'Stop drawing',
-            icon: 'times',
-          },
-        ],
-        drawType: undefined,
-        drawnFeatures: [],
-        // base layers
-        baseLayers: [
-          {
-            name: 'osm',
-            title: 'OpenStreetMap',
-            visible: false,
-          },
-          {
-            name: 'sputnik',
-            title: 'Sputnik Maps',
-            visible: false,
-          },
-          // needs paid plan to get key
-          // {
-          //   name: 'mapbox',
-          //   title: 'Mapbox',
-          // },
-          {
-            name: 'bingmaps',
-            title: 'Bing Maps',
-            apiKey: 'ArbsA9NX-AZmebC6VyXAnDqjXk6mo2wGCmeYM8EwyDaxKfQhUYyk0jtx6hX5fpMn',
-            imagerySet: 'CanvasGray',
-            visible: false,
-          },
-        ],
         // layers config
         layers: [
           {
-            id: 'wms-pointx',
-            title: 'IZS',
+            id: 'osm',
             cmp: 'vl-layer-tile',
-            visible: true,
-            zIndex: 1,
+            title: 'OpenStreetMap',
+            visible: false,
             source: {
-              cmp: 'vl-source-wms',
-              url: 'https://api.panel.tereza.giss.cz/mapproxy.php?url=http://datsklad.izscr.cz/mapservices/services/tabl/MAPA_POINTX_6_5_2016_wms/MapServer/WmsServer',
-              layers: '0',
-              styles: 'default',
-              projection: 'EPSG:5514,EPSG:5239',
-              format: 'image/jpeg',
-              crossOrigin: 'anonymous',
+              cmp: 'vl-source-osm',
             },
           },
           // mapy.cz
@@ -535,34 +302,18 @@
               requestEncoding: 'REST',
             },
           },
-          // ŘSD - dopravní situace
+          // Features for translation (points)
           {
-            id: 'rsd-doprava',
-            title: 'Doprava - ŘSD ČR',
+            id: 'points',
+            title: 'Body',
             cmp: 'vl-layer-vector',
             visible: false,
             renderMode: 'image',
             'z-index': 100,
             source: {
-              projection: 'EPSG:5514,EPSG:15965',
               cmp: 'vl-source-vector',
-              features: [],
-              url (extent, resolution, projection) {
-                let inchesPerMeter = 39.37
-                let dotsPerInches = 72
-                let date = new Date()
-                let fullDate = date.getFullYear() + '-' + (('00' + (date.getMonth() + 1)).slice(-2)) + '-' + date.getDate()
-                let randInt = Math.floor(Math.random() * (9999 + 1)) + 90000
-                let jtskExtent = extent
-                transformExtent(jtskExtent, 'EPSG:4326', 'EPSG:5514,EPSG:15965')
-                let scale = resolution * dotsPerInches * inchesPerMeter
-                scale = Math.round(scale)
-                let url = 'http://localhost/dopravniinfo-proxy/index.php?url=http://www.dopravniinfo.cz/MapServices/DynamicLayers.ashx/GetFeatures?data={"resolution":' + resolution + ',"extent":{"xmin":' + jtskExtent[0] + ',"xmax":' + jtskExtent[2] + ',"ymin":' + jtskExtent[1] + ',"ymax":' + jtskExtent[3] + '},"layers":["TI","TIU","Kamery","Mereni","ZPI","Meteo","PocasiOblast","SjizdnostKomunikace","TL"],"layerDefs":{"TI":"(([MinZoom] is null) or ([MinZoom]>=' + scale + ')) and ([PlatnostOd] <= \'' + fullDate + ' 23:59:59\' AND [PlatnostDo] >= \'' + fullDate + ' 0:00\')","TIU":"(([MinZoom] is null) or ([MinZoom]>=' + scale + ')) and ([PlatnostOd] <= \'' + fullDate + ' 23:59:59\' AND [PlatnostDo] >= \'' + fullDate + ' 0:00\')","TL": "(([MinZoom] is null) or ([MinZoom]>=' + scale + '))"}}'
-                return url + '&callback=map_jsonp_callback_' + randInt
-              },
-              strategyFactory () {
-                return loadingBBox
-              },
+              projection: 'EPSG:5514,EPSG:15965',
+              features: pointsJson.features,
             },
             style: [{
               cmp: 'vl-style-box',
@@ -584,304 +335,33 @@
               },
             }],
           },
-          // IZS terinos
+          // Features for translation (polygons)
           {
-            id: 'wmts-izscr-terinos',
-            title: 'Terinos IZS ČR',
-            cmp: 'vl-layer-tile',
+            id: 'polygons',
+            title: 'Polygony',
+            cmp: 'vl-layer-vector',
             visible: false,
+            renderMode: 'image',
+            'z-index': 99,
             source: {
-              cmp: 'vl-source-wmts',
-              url: 'http://gis.izscr.cz/arcgis/rest/services/base_maps/vektor_cr/MapServer/tile/{TileMatrix}/{TileRow}/{TileCol}?blankTile=false',
-              layerName: 'base_maps_vektor_cr',
-              extent: [-904584.8601000011, -1227295.8301, -431724.3000999987, -935236.5901000015],
-              origin: [-3.36998E7, 3.36998E7],
-              resolutions: [529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167, 26.458386250105836, 13.229193125052918, 5.291677250021167, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167, 0.26458386250105836],
-              matrixSet: 'default028mm',
-              tileSize: 512,
-              projection: 'EPSG:5514,EPSG:5239',
-              format: 'image/jpeg',
-              styleName: 'default',
-              requestEncoding: 'REST',
-            },
-          },
-          // IZS ČR
-          {
-            id: 'wmts-izscr-basemap',
-            title: 'WMTS - IZS ČR base map',
-            cmp: 'vl-layer-tile',
-            visible: false,
-            source: {
-              cmp: 'vl-source-wmts',
-              url: 'http://datsklad.izscr.cz/mapservices/rest/services/BaseMaps/GINA_CR_WGS_extend1/MapServer/tile/{TileMatrix}/{TileRow}/{TileCol}',
-              layerName: 'BaseMaps_GINA_CR_WGS_extend1',
-              origin: [-2.00377E7, 3.02411E7],
-              resolutions: [338.6673440013547, 169.33367200067735, 84.66683600033868, 42.33341800016934, 21.16670900008467, 10.583354500042335, 5.291677250021167, 2.6458386250105836, 1.3229193125052918, 0.6614596562526459],
-              matrixSet: 'default028mm',
-              projection: 'EPSG:3857',
-              format: 'image/jpeg',
-              styleName: 'default',
-              requestEncoding: 'REST',
-            },
-          },
-          {
-            id: 'wmts-izscr-ortofoto',
-            title: 'Ortofoto - IZS ČR',
-            cmp: 'vl-layer-tile',
-            visible: false,
-            source: {
-              cmp: 'vl-source-wmts',
-              url: 'http://datsklad.izscr.cz/mapservices/rest/services/Orto_Ioo/MapServer/tile/{TileMatrix}/{TileRow}/{TileCol}',
-              layerName: 'Orto_Ioo',
-              extent: [-910381.5218461752, -1235926.770970177, -421959.7116692215, -932396.1639089659],
-              origin: [-3.36998E7, 3.36998E7],
-              resolutions: [529.1677250021168, 264.5838625010584, 132.2919312505292, 52.91677250021167, 26.458386250105836, 13.229193125052918, 5.291677250021167, 2.6458386250105836, 1.3229193125052918, 0.5291677250021167, 0.26458386250105836],
-              matrixSet: 'default028mm',
+              cmp: 'vl-source-vector',
               projection: 'EPSG:5514,EPSG:15965',
-              format: 'image/jpeg',
-              styleName: 'default',
-              requestEncoding: 'REST',
+              features: polygonsJson.features,
             },
-          },
-          {
-            id: 'wfs-doprava',
-            title: 'Doprava - IZS ČR',
-            cmp: 'vl-layer-vector',
-            visible: false,
-            renderMode: 'image',
-            source: {
-              cmp: 'vl-source-vector',
-              url (extent, resolution, projection) {
-                var jtskExtent = transformExtent(extent, 'EPSG:4326', 'EPSG:5514') // tady je potřeba vědět, v jakém systému to vrací
-                // alert('EPSG:4326: ' + extent.join(',') + '\n' + 'EPSG:5514,EPSG:15965 ' + jtskExtent.join(','))
-                return 'http://datsklad.izscr.cz/mapservices/rest/services/live_sluzby/JSDI/MapServer/export?dpi=96&transparent=true&format=png&bbox=' + jtskExtent.join(',') + '&bboxSR=5514&imageSR=5514&size=1908,869&f=image'
-              },
-              strategyFactory () {
-                return loadingBBox
-              },
-            },
-          },
-          // Packman vector layer with static vector features
-          // rendered through vl-feature component.
-          {
-            id: 'pacman',
-            title: 'Pacman',
-            cmp: 'vl-layer-vector',
-            visible: false,
-            renderMode: 'image',
-            source: {
-              cmp: 'vl-source-vector',
-              staticFeatures: pacmanFeaturesCollection.features,
-            },
-            style: [
-              {
-                cmp: 'vl-style-func',
-                factory: this.pacmanStyleFunc,
-              },
-            ],
-          },
-          // Circles
-          {
-            id: 'circles',
-            title: 'Circles',
-            cmp: 'vl-layer-vector',
-            visible: false,
-            source: {
-              cmp: 'vl-source-vector',
-              staticFeatures: range(0, 100).map(i => {
-                let coordinate = [
-                  random(-50, 50),
-                  random(-50, 50),
-                ]
-
-                return {
-                  type: 'Feature',
-                  id: 'random-cirlce-' + i,
-                  geometry: {
-                    type: 'Circle',
-                    coordinates: coordinate,
-                    radius: random(Math.pow(10, 5), Math.pow(10, 6)),
+            style: [{
+              cmp: 'vl-style-box',
+              styles: {
+                'vl-style-fill': {
+                  fill: {
+                    color: 'rgba(255,0,0,0.8)',
                   },
-                }
-              }),
-            },
-          },
-          // Countries vector layer
-          // loads GeoJSON data from remote server
-          {
-            id: 'countries',
-            title: 'Countries',
-            cmp: 'vl-layer-vector',
-            visible: false,
-            source: {
-              cmp: 'vl-source-vector',
-              url: 'https://openlayers.org/en/latest/examples/data/geojson/countries.geojson',
-            },
-            style: [
-              {
-                cmp: 'vl-style-box',
-                styles: {
-                  'vl-style-fill': {
-                    color: [255, 255, 255, 0.5],
-                  },
-                  'vl-style-stroke': {
-                    color: '#219e46',
-                    width: 2,
-                  },
-                  'vl-style-text': {
-                    text: '\uf041',
-                    font: '24px FontAwesome',
-                    fill: {
-                      color: '#2355af',
-                    },
-                    stroke: {
-                      color: 'white',
-                    },
+                  stroke: {
+                    color: '#FFFFFF',
+                    width: 3,
                   },
                 },
               },
-            ],
-          },
-          // Tile layer with WMS source
-          {
-            id: 'wms',
-            title: 'WMS',
-            cmp: 'vl-layer-tile',
-            visible: false,
-            source: {
-              cmp: 'vl-source-wms',
-              url: 'https://ahocevar.com/geoserver/wms',
-              layers: 'topp:states',
-              extParams: { TILED: true },
-              serverType: 'geoserver',
-            },
-          },
-          // Tile layer with WMTS source
-          {
-            id: 'wmts',
-            title: 'WMTS',
-            cmp: 'vl-layer-tile',
-            visible: false,
-            source: {
-              cmp: 'vl-source-wmts',
-              url: 'https://services.arcgisonline.com/arcgis/rest/services/Demographics/USA_Population_Density/MapServer/WMTS/',
-              layerName: '0',
-              matrixSet: 'EPSG:3857',
-              format: 'image/png',
-              styleName: 'default',
-            },
-          },
-          // Vector layer with clustering
-          {
-            id: 'cluster',
-            title: 'Cluster',
-            cmp: 'vl-layer-vector',
-            renderMode: 'image',
-            visible: false,
-            // Cluster source (vl-source-cluster) wraps vector source (vl-source-vector)
-            source: {
-              cmp: 'vl-source-cluster',
-              distance: 50,
-              source: {
-                cmp: 'vl-source-vector',
-                // features defined as array of GeoJSON encoded Features
-                // to not overload Vue and DOM
-                features: range(0, 10000).map(i => {
-                  let coordinate = [
-                    random(-50, 50),
-                    random(-50, 50),
-                  ]
-
-                  return {
-                    type: 'Feature',
-                    id: 'random-' + i,
-                    geometry: {
-                      type: 'Point',
-                      coordinates: coordinate,
-                    },
-                  }
-                }),
-              },
-            },
-            style: [
-              {
-                cmp: 'vl-style-func',
-                factory: this.clusterStyleFunc,
-              },
-            ],
-          },
-          {
-            id: 'wfs',
-            title: 'WFS (Canada water areas)',
-            cmp: 'vl-layer-vector',
-            visible: false,
-            renderMode: 'image',
-            source: {
-              cmp: 'vl-source-vector',
-              features: [],
-              url (extent, resolution, projection) {
-                return 'https://ahocevar.com/geoserver/wfs?service=WFS&' +
-                  'version=1.1.0&request=GetFeature&typename=osm:water_areas&' +
-                  'outputFormat=application/json&srsname=' + projection + '&' +
-                  'bbox=' + extent.join(',') + ',' + projection
-              },
-              strategyFactory () {
-                return loadingBBox
-              },
-            },
-          },
-          {
-            id: 'static-image',
-            title: 'Static Image with custom projection',
-            cmp: 'vl-layer-image',
-            visible: false,
-            source: {
-              cmp: 'vl-source-image-static',
-              projection: customProj.getCode(),
-              url: 'https://imgs.xkcd.com/comics/online_communities.png',
-              size: [1024, 968],
-              extent: imageExtent,
-            },
-          },
-          {
-            id: 'wms-image',
-            title: 'Image WMS',
-            cmp: 'vl-layer-image',
-            visible: false,
-            source: {
-              cmp: 'vl-source-image-wms',
-              url: 'https://ahocevar.com/geoserver/wms',
-              layers: 'topp:states',
-              serverType: 'geoserver',
-            },
-          },
-          {
-            id: 'vector-tiles',
-            title: 'Vector tiles',
-            cmp: 'vl-layer-vector-tile',
-            visible: false,
-            source: {
-              cmp: 'vl-source-vector-tile',
-              url: 'https://basemaps.arcgis.com/v1/arcgis/rest/services/World_Basemap/VectorTileServer/tile/{z}/{y}/{x}.pbf',
-            },
-            style: [
-              {
-                cmp: 'vl-style-box',
-                styles: {
-                  'vl-style-stroke': {
-                    width: 2,
-                    color: '#2979ff',
-                  },
-                  'vl-style-circle': {
-                    radius: 5,
-                    stroke: {
-                      width: 1.5,
-                      color: '#2979ff',
-                    },
-                  },
-                },
-              },
-            ],
+            }],
           },
         ],
       }
@@ -918,9 +398,9 @@
       .panel-block
         &.draw-panel
           .buttons
-            .button
-              display: block
-              flex: 1 1 100%
+          .button
+            display: block
+            flex: 1 1 100%
 
       +tablet()
         position: absolute
